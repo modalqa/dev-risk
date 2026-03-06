@@ -458,3 +458,41 @@ enum CorrelationStrength {
   MODERATE_NEGATIVE // -0.7 to -0.4
   STRONG_NEGATIVE   // < -0.7
 }
+
+// =========================
+// PREDICTION MODELS (Phase 3)
+// =========================
+
+model RiskPrediction {
+  id              String           @id @default(uuid())
+  tenantId        String
+  predictionType  PredictionType
+  forecastData    Json             // PredictionResult or ScenarioResult
+  calculatedAt    DateTime         @default(now())
+  validUntil      DateTime
+  
+  @@unique([tenantId, predictionType])
+  @@index([tenantId])
+  @@index([validUntil])
+}
+
+model RiskForecastHistory {
+  id                   String    @id @default(uuid())
+  tenantId             String
+  forecastDate         DateTime  // The date being forecasted
+  predictedRiskIndex   Float
+  actualRiskIndex      Float?    // Filled in after the date passes
+  confidenceLower      Float
+  confidenceUpper      Float
+  wasAccurate          Boolean?  // Within confidence interval?
+  createdAt            DateTime  @default(now())
+  
+  @@index([tenantId])
+  @@index([forecastDate])
+  @@index([tenantId, forecastDate])
+}
+
+enum PredictionType {
+  WEEKLY_FORECAST
+  SCENARIO_SIMULATION
+}

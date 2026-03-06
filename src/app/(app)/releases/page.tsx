@@ -4,28 +4,47 @@ import Header from '@/components/layout/Header';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Badge from '@/components/ui/Badge';
+import Pagination from '@/components/ui/Pagination';
 import {
   getStatusBadgeClass, getRiskIndexColor, formatDate,
 } from '@/lib/utils';
 import { GitBranch, Plus, ArrowRight, Calendar, BarChart3 } from 'lucide-react';
 import AddReleaseButton from './AddReleaseButton';
 
-async function getReleases(tenantId: string) {
-  return prisma.release.findMany({
-    where: { tenantId },
-    orderBy: { deploymentDate: 'desc' },
-    include: {
-      _count: { select: { risks: true } },
-      risks: { select: { severity: true } },
-    },
-  });
+const PAGE_SIZE = 10;
+
+async function getReleases(tenantId: string, page: number) {
+  const skip = (page - 1) * PAGE_SIZE;
+  
+  const [releases, totalCount] = await Promise.all([
+    prisma.release.findMany({
+      where: { tenantId },
+      orderBy: { deploymentDate: 'desc' },
+      include: {
+        _count: { select: { risks: true } },
+        risks: { select: { severity: true } },
+      },
+      skip,
+      take: PAGE_SIZE,
+    }),
+    prisma.release.count({ where: { tenantId } }),
+  ]);
+  
+  return { releases, totalCount };
 }
 
-export default async function ReleasesPage() {
+export default async function ReleasesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const releases = await getReleases(user.tenantId);
+  const params = await searchParams;
+  const currentPage = Math.max(1, parseInt(params.page || '1', 10));
+  const { releases, totalCount } = await getReleases(user.tenantId, currentPage);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   return (
     <>
@@ -35,7 +54,7 @@ export default async function ReleasesPage() {
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="bg-surface-2 rounded-lg px-3 py-1.5 flex items-center gap-2 border border-border">
-              <span className="text-xs text-gray-400">{releases.length} total</span>
+              <span className="text-xs text-gray-400">{totalCount} total</span>
             </div>
           </div>
           {user.role !== 'VIEWER' && <AddReleaseButton />}
@@ -124,6 +143,16 @@ export default async function ReleasesPage() {
               );
             })}
           </div>
+        )}
+        
+        {/* Pagination */}
+        {releases.length > 0 && (
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+          />
         )}
       </div>
     </>

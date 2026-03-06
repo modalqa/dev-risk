@@ -8,9 +8,14 @@ import { getRoleBadgeClass, getStatusBadgeClass, formatDateTime } from '@/lib/ut
 import { Settings, Users, Shield } from 'lucide-react';
 import AddUserButton from './AddUserButton';
 import UserActions from './UserActions';
+import AuditPagination from './AuditPagination';
 
-async function getTeamData(tenantId: string) {
-  const [users, tenant, auditLogs] = await Promise.all([
+const AUDIT_PAGE_SIZE = 15;
+
+async function getTeamData(tenantId: string, auditPage: number) {
+  const auditSkip = (auditPage - 1) * AUDIT_PAGE_SIZE;
+  
+  const [users, tenant, auditLogs, auditCount] = await Promise.all([
     prisma.user.findMany({
       where: { tenantId },
       orderBy: { createdAt: 'asc' },
@@ -19,17 +24,27 @@ async function getTeamData(tenantId: string) {
     prisma.auditLog.findMany({
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      skip: auditSkip,
+      take: AUDIT_PAGE_SIZE,
     }),
+    prisma.auditLog.count({ where: { tenantId } }),
   ]);
-  return { users, tenant, auditLogs };
+  return { users, tenant, auditLogs, auditCount };
 }
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const { users, tenant, auditLogs } = await getTeamData(user.tenantId);
+  const params = await searchParams;
+  const auditPage = Math.max(1, parseInt(params.auditPage || '1', 10));
+  
+  const { users, tenant, auditLogs, auditCount } = await getTeamData(user.tenantId, auditPage);
+  const auditTotalPages = Math.ceil(auditCount / AUDIT_PAGE_SIZE);
 
   return (
     <>
@@ -108,27 +123,42 @@ export default async function SettingsPage() {
 
         {/* Audit logs */}
         <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Settings className="w-4 h-4 text-gray-400" />
-            <h3 className="text-sm font-semibold text-white">Audit Log</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Settings className="w-4 h-4 text-gray-400" />
+              <h3 className="text-sm font-semibold text-white">Audit Log</h3>
+              <span className="text-xs text-gray-500">({auditCount} entries)</span>
+            </div>
           </div>
           {auditLogs.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-4">No activity yet</p>
           ) : (
-            <div className="space-y-1.5">
-              {auditLogs.map((log: any) => (
-                <div key={log.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs text-gray-300">
-                      <span className="font-medium text-white">{log.action}</span>
-                      {' '}on <span className="text-primary-light">{log.entity}</span>
-                    </span>
+            <>
+              <div className="space-y-1.5">
+                {auditLogs.map((log: any) => (
+                  <div key={log.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs text-gray-300">
+                        <span className="font-medium text-white">{log.action}</span>
+                        {' '}on <span className="text-primary-light">{log.entity}</span>
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-gray-600 flex-shrink-0">{formatDateTime(log.createdAt)}</span>
                   </div>
-                  <span className="text-[10px] text-gray-600 flex-shrink-0">{formatDateTime(log.createdAt)}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              
+              {/* Audit Pagination */}
+              {auditTotalPages > 1 && (
+                <AuditPagination 
+                  currentPage={auditPage}
+                  totalPages={auditTotalPages}
+                  totalItems={auditCount}
+                  pageSize={AUDIT_PAGE_SIZE}
+                />
+              )}
+            </>
           )}
         </Card>
       </div>

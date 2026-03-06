@@ -8,6 +8,8 @@ import RiskTrendChart from '@/components/dashboard/RiskTrendChart';
 import HighRiskReleases from '@/components/dashboard/HighRiskReleases';
 import UserJourneyHeatmap from '@/components/dashboard/UserJourneyHeatmap';
 import CorrelationInsights from '@/components/dashboard/CorrelationInsights';
+import RiskForecastCard from '@/components/dashboard/RiskForecastCard';
+import ScenarioSimulator from '@/components/dashboard/ScenarioSimulator';
 import {
   ShieldAlert, GitBranch, AlertTriangle, Activity, TrendingUp,
 } from 'lucide-react';
@@ -129,18 +131,20 @@ export default async function DashboardPage() {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           <Card className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-white">Risk Trend (30 Hari)</h3>
+                <h3 className="text-sm font-semibold text-white">Risk Trend (30 Day)</h3>
                 <p className="text-xs text-gray-500 mt-0.5">Risk index vs engineering stability</p>
               </div>
             </div>
-            <RiskTrendChart data={data.riskTrend} />
+            <div className="h-[240px]">
+              <RiskTrendChart data={data.riskTrend} />
+            </div>
           </Card>
 
-          <Card>
+          <Card className="max-h-[340px] overflow-y-auto">
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-white">High-Risk Releases</h3>
               <p className="text-xs text-gray-500 mt-0.5">Risk index ≥ 50</p>
@@ -163,6 +167,15 @@ export default async function DashboardPage() {
 
           {/* Correlation Insights */}
           <CorrelationInsights />
+        </div>
+
+        {/* Phase 3: Predictive Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Risk Forecast */}
+          <RiskForecastCard />
+
+          {/* Scenario Simulator */}
+          <ScenarioSimulator />
         </div>
       </div>
     </>

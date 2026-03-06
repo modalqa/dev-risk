@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import Header from '@/components/layout/Header';
 import { prisma } from '@/lib/prisma';
 import Badge from '@/components/ui/Badge';
+import Pagination from '@/components/ui/Pagination';
 import {
   getSeverityBadgeClass, getStatusBadgeClass, getCategoryLabel, formatDate,
 } from '@/lib/utils';
@@ -11,19 +12,29 @@ import AddRiskButton from './AddRiskButton';
 import RiskFilterBar from './RiskFilterBar';
 import RiskActions from './RiskActions';
 
-async function getRisks(tenantId: string, filters: Record<string, string>) {
+const PAGE_SIZE = 15;
+
+async function getRisks(tenantId: string, filters: Record<string, string>, page: number) {
   const where: Record<string, unknown> = { tenantId };
   if (filters.severity) where.severity = filters.severity;
   if (filters.category) where.category = filters.category;
   if (filters.status)   where.status   = filters.status;
   if (filters.releaseId) where.releaseId = filters.releaseId;
 
-  return prisma.risk.findMany({
-    where,
-    orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
-    include: { release: { select: { version: true, id: true } } },
-    take: 100,
-  });
+  const skip = (page - 1) * PAGE_SIZE;
+  
+  const [risks, totalCount] = await Promise.all([
+    prisma.risk.findMany({
+      where,
+      orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
+      include: { release: { select: { version: true, id: true } } },
+      skip,
+      take: PAGE_SIZE,
+    }),
+    prisma.risk.count({ where }),
+  ]);
+  
+  return { risks, totalCount };
 }
 
 async function getReleases(tenantId: string) {
@@ -38,24 +49,38 @@ async function getReleases(tenantId: string) {
 export default async function RisksPage({
   searchParams,
 }: {
-  searchParams: Record<string, string>;
+  searchParams: Promise<Record<string, string>>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const [risks, releases] = await Promise.all([
-    getRisks(user.tenantId, searchParams),
+  const params = await searchParams;
+  const currentPage = Math.max(1, parseInt(params.page || '1', 10));
+  
+  const [{ risks, totalCount }, releases] = await Promise.all([
+    getRisks(user.tenantId, params, currentPage),
     getReleases(user.tenantId)
   ]);
+  
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const severityOrder: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
   const sortedRisks = [...risks].sort(
     (a, b) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4)
   );
 
-  const criticalCount = risks.filter((r: any) => r.severity === 'CRITICAL').length;
-  const highCount = risks.filter((r: any) => r.severity === 'HIGH').length;
-  const openCount = risks.filter((r: any) => r.status === 'OPEN' || r.status === 'IN_PROGRESS').length;
+  // Get counts for stats (from full count, not paginated)
+  const statsWhere: Record<string, unknown> = { tenantId: user.tenantId };
+  if (params.severity) statsWhere.severity = params.severity;
+  if (params.category) statsWhere.category = params.category;
+  if (params.status)   statsWhere.status   = params.status;
+  if (params.releaseId) statsWhere.releaseId = params.releaseId;
+
+  const [criticalCount, highCount, openCount] = await Promise.all([
+    prisma.risk.count({ where: { ...statsWhere, severity: 'CRITICAL' } }),
+    prisma.risk.count({ where: { ...statsWhere, severity: 'HIGH' } }),
+    prisma.risk.count({ where: { ...statsWhere, status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+  ]);
 
   return (
     <>
@@ -65,7 +90,7 @@ export default async function RisksPage({
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           {[
-            { label: 'Total Risks', value: risks.length, color: 'text-white' },
+            { label: 'Total Risks', value: totalCount, color: 'text-white' },
             { label: 'Critical', value: criticalCount, color: 'text-red-400' },
             { label: 'High', value: highCount, color: 'text-orange-400' },
             { label: 'Open/Active', value: openCount, color: 'text-yellow-400' },
@@ -79,7 +104,7 @@ export default async function RisksPage({
 
         {/* Filter + Actions */}
         <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <RiskFilterBar currentFilters={searchParams} />
+          <RiskFilterBar currentFilters={params} />
           {user.role !== 'VIEWER' && <AddRiskButton tenantId={user.tenantId} />}
         </div>
 
@@ -138,6 +163,16 @@ export default async function RisksPage({
               </div>
             ))}
           </div>
+        )}
+        
+        {/* Pagination */}
+        {sortedRisks.length > 0 && (
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalCount}
+            pageSize={PAGE_SIZE}
+          />
         )}
       </div>
     </>

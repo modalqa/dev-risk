@@ -5,6 +5,8 @@ import { Shield, TrendingUp, BarChart3, Users, CheckCircle, ArrowRight, Play, Ma
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
+import Image from 'next/image';
+import InteractiveDashboardPreview from '@/components/landing/InteractiveDashboardPreview';
 
 export default function LandingPage() {
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -153,6 +155,11 @@ export default function LandingPage() {
             </a>
           </div>
         </div>
+
+        {/* Product Screenshots */}
+        <div className="mt-16">
+          <InteractiveDashboardPreview />
+        </div>
       </section>
 
       {/* Features Section */}
@@ -205,41 +212,82 @@ export default function LandingPage() {
               ))}
             </ul>
           </div>
-          <div className="bg-surface border border-border rounded-xl p-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                <BarChart3 className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                Ready to get started?
-              </h3>
-              <p className="text-gray-400 mb-6">
-                Book a personalized demo and see how DevRisk AI can transform your development process.
-              </p>
-              <Button
-                onClick={() => setShowRequestModal(true)}
-                className="w-full"
-                size="lg"
-              >
-                Request Demo
-              </Button>
-            </div>
+          <div className="rounded-xl overflow-hidden border border-border/50 shadow-xl">
+            <Image
+              src="/ast-lp2.png"
+              alt="DevRisk AI - Risk Analysis & Insights"
+              width={1200}
+              height={800}
+              className="w-full h-auto"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="max-w-7xl mx-auto px-6 py-20">
+        <div className="bg-gradient-to-br from-primary/20 to-accent-blue/20 rounded-2xl p-12 text-center border border-primary/20">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Ready to get started?
+          </h2>
+          <p className="text-lg text-gray-400 mb-8 max-w-2xl mx-auto">
+            Book a personalized demo and see how DevRisk AI can transform your development process and reduce production incidents.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              onClick={() => setShowRequestModal(true)}
+              size="lg"
+              className="gap-2 px-8"
+            >
+              <Play className="w-5 h-5" />
+              Request Demo
+            </Button>
+            <a
+              href="/login"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-surface border border-border text-white hover:bg-surface-2 transition-colors"
+            >
+              Sign In to Dashboard
+              <ArrowRight className="w-4 h-4" />
+            </a>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-surface/30 py-8">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent-blue flex items-center justify-center">
-              <Shield className="w-4 h-4 text-white" />
+      <footer className="border-t border-border bg-surface/30 py-10">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Logo */}
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent-blue flex items-center justify-center">
+                <Shield className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-semibold text-white">DevRisk AI</span>
             </div>
-            <span className="font-semibold text-white">DevRisk AI</span>
+
+            {/* Links */}
+            <div className="flex items-center gap-6">
+              <a
+                href="/privacy"
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Privacy Policy
+              </a>
+              <a
+                href="/terms"
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Terms of Service
+              </a>
+            </div>
           </div>
-          <p className="text-sm text-gray-500">
-            © 2026 DevRisk AI. AI Risk Intelligence for Scaling Product Teams.
-          </p>
+
+          {/* Copyright */}
+          <div className="mt-6 pt-6 border-t border-border/50 text-center">
+            <p className="text-sm text-gray-500">
+              © 2026 DevRisk AI. AI Risk Intelligence for Scaling Product Teams. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
 
