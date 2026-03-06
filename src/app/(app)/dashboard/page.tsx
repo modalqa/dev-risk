@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import RiskTrendChart from '@/components/dashboard/RiskTrendChart';
 import HighRiskReleases from '@/components/dashboard/HighRiskReleases';
 import UserJourneyHeatmap from '@/components/dashboard/UserJourneyHeatmap';
+import CorrelationInsights from '@/components/dashboard/CorrelationInsights';
 import {
   ShieldAlert, GitBranch, AlertTriangle, Activity, TrendingUp,
 } from 'lucide-react';
@@ -149,15 +150,20 @@ export default async function DashboardPage() {
         </div>
 
         {/* User Journey Heatmap */}
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-white">User Journey Risk Heatmap</h3>
-              <p className="text-xs text-gray-500 mt-0.5">Stability per critical flow</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-white">User Journey Risk Heatmap</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Stability per critical flow</p>
+              </div>
             </div>
-          </div>
-          <UserJourneyHeatmap flows={data.flows} />
-        </Card>
+            <UserJourneyHeatmap flows={data.flows} />
+          </Card>
+
+          {/* Correlation Insights */}
+          <CorrelationInsights />
+        </div>
       </div>
     </>
   );
