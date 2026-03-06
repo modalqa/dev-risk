@@ -209,12 +209,12 @@ export class AiProviderManager {
     
     console.log(`[Ollama Provider] Quick connection test to ${baseUrl}...`);
     
-    // Connection test (10 seconds max — Ollama can be slow on cold start)
+    // Connection test (30 seconds max — remote Ollama can be slow)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log('[Ollama Provider] Connection test timeout (10s)');
+      console.log('[Ollama Provider] Connection test timeout (30s)');
       controller.abort();
-    }, 10000);
+    }, 30000);
 
     try {
       // Test connection with health check endpoint
@@ -233,14 +233,14 @@ export class AiProviderManager {
       console.log(`[Ollama Provider] Server healthy, proceeding with generation...`);
       
       // Actual generation — Ollama takes a long time (model loading + inference)
-      // Timeout 120 seconds: large models + long prompts can take >30 seconds
+      // Timeout 180 seconds: large models + long prompts can take >60 seconds
       const genController = new AbortController();
       const genTimeoutId = setTimeout(() => {
-        console.log('[Ollama Provider] Generation timeout (120s)');
+        console.log('[Ollama Provider] Generation timeout (180s)');
         genController.abort();
-      }, 120000);
+      }, 180000);
 
-      console.log(`[Ollama Provider] Sending generation request (model: ${provider.model}, timeout: 120s)...`);
+      console.log(`[Ollama Provider] Sending generation request (model: ${provider.model}, timeout: 180s)...`);
       const genStart = Date.now();
       
       const response = await fetch(`${baseUrl}/api/generate`, {

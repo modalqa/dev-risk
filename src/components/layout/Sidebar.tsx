@@ -11,6 +11,7 @@ import {
   LogOut,
   ShieldAlert,
   ChevronRight,
+  Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,11 +20,12 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard',     label: 'Executive Dashboard', icon: LayoutDashboard },
-  { href: '/releases',      label: 'Releases',            icon: GitBranch },
-  { href: '/risks',         label: 'Risk Management',     icon: AlertTriangle },
-  { href: '/user-journey',  label: 'User Journey',        icon: Map },
-  { href: '/settings',      label: 'Settings',            icon: Settings },
+  { href: '/dashboard',             label: 'Executive Dashboard', icon: LayoutDashboard },
+  { href: '/releases',              label: 'Releases',            icon: GitBranch },
+  { href: '/risks',                 label: 'Risk Management',     icon: AlertTriangle },
+  { href: '/user-journey',          label: 'User Journey',        icon: Map },
+  { href: '/settings/integrations', label: 'Integrations',        icon: Plug },
+  { href: '/settings',              label: 'Settings',            icon: Settings, exact: true },
 ];
 
 export default function Sidebar({ user }: SidebarProps) {
@@ -55,7 +57,9 @@ export default function Sidebar({ user }: SidebarProps) {
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          const isActive = (item as any).exact 
+            ? pathname === item.href 
+            : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.href}

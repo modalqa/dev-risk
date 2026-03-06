@@ -284,3 +284,177 @@ enum LeadStatus {
   CLOSED_WON
   CLOSED_LOST
 }
+
+// =========================
+// INTEGRATION MODELS (Phase 2)
+// =========================
+
+model GitIntegration {
+  id              String              @id @default(uuid())
+  tenantId        String              @unique
+  provider        GitProvider
+  repoOwner       String              // e.g., "facebook"
+  repoName        String              // e.g., "react"
+  accessToken     String              // Encrypted PAT or OAuth token
+  webhookSecret   String?             // For incoming webhooks
+  isActive        Boolean             @default(true)
+  lastSyncAt      DateTime?
+  syncStatus      IntegrationStatus   @default(PENDING)
+  syncError       String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relation to tenant (one-to-one per tenant for simplicity)
+  syncLogs        GitSyncLog[]
+
+  @@index([tenantId])
+  @@index([provider])
+}
+
+model GitSyncLog {
+  id              String            @id @default(uuid())
+  integrationId   String
+  syncType        String            // 'pull_requests', 'commits', 'reviews'
+  recordsFound    Int               @default(0)
+  recordsSynced   Int               @default(0)
+  status          IntegrationStatus
+  errorMessage    String?
+  startedAt       DateTime          @default(now())
+  completedAt     DateTime?
+  
+  integration     GitIntegration    @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([syncType])
+}
+
+model CICDIntegration {
+  id              String              @id @default(uuid())
+  tenantId        String              @unique
+  provider        CICDProvider
+  projectId       String?             // For Jenkins/CircleCI project identifier
+  accessToken     String?             // API token
+  webhookUrl      String?             // Our webhook endpoint for push events
+  webhookSecret   String?
+  isActive        Boolean             @default(true)
+  lastSyncAt      DateTime?
+  syncStatus      IntegrationStatus   @default(PENDING)
+  syncError       String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  syncLogs        CICDSyncLog[]
+
+  @@index([tenantId])
+  @@index([provider])
+}
+
+model CICDSyncLog {
+  id              String            @id @default(uuid())
+  integrationId   String
+  syncType        String            // 'builds', 'deployments', 'coverage'
+  recordsFound    Int               @default(0)
+  recordsSynced   Int               @default(0)
+  status          IntegrationStatus
+  errorMessage    String?
+  startedAt       DateTime          @default(now())
+  completedAt     DateTime?
+  
+  integration     CICDIntegration   @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([syncType])
+}
+
+// Synced data from Git provider
+model PullRequestData {
+  id                String    @id @default(uuid())
+  tenantId          String
+  externalId        String    // PR number or ID from provider
+  title             String
+  author            String
+  state             String    // open, closed, merged
+  linesAdded        Int       @default(0)
+  linesDeleted      Int       @default(0)
+  filesChanged      Int       @default(0)
+  reviewCount       Int       @default(0)
+  reviewDurationHrs Float?    // Time from open to first review
+  mergedAt          DateTime?
+  createdAt         DateTime
+  updatedAt         DateTime  @updatedAt
+  syncedAt          DateTime  @default(now())
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+}
+
+// Synced data from CI/CD provider
+model BuildData {
+  id              String    @id @default(uuid())
+  tenantId        String
+  externalId      String    // Build ID from provider
+  branch          String?
+  commitSha       String?
+  status          String    // success, failure, cancelled
+  duration        Int?      // seconds
+  testsPassed     Int?
+  testsFailed     Int?
+  testCoverage    Float?
+  triggeredBy     String?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  syncedAt        DateTime  @default(now())
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId])
+  @@index([tenantId, startedAt])
+}
+
+// Risk Correlation results
+model RiskCorrelation {
+  id              String    @id @default(uuid())
+  tenantId        String
+  signalA         String    // e.g., 'pr_size'
+  signalB         String    // e.g., 'incident_count'
+  correlation     Float     // -1 to 1 (Pearson coefficient)
+  strength        CorrelationStrength
+  sampleSize      Int       @default(0)
+  periodDays      Int       @default(30)
+  insight         String?   // AI-generated insight
+  calculatedAt    DateTime  @default(now())
+
+  @@unique([tenantId, signalA, signalB])
+  @@index([tenantId])
+  @@index([strength])
+}
+
+enum GitProvider {
+  GITHUB
+  GITLAB
+  BITBUCKET
+}
+
+enum CICDProvider {
+  GITHUB_ACTIONS
+  GITLAB_CI
+  JENKINS
+  CIRCLECI
+}
+
+enum IntegrationStatus {
+  PENDING
+  SYNCING
+  SUCCESS
+  FAILED
+}
+
+enum CorrelationStrength {
+  STRONG_POSITIVE   // > 0.7
+  MODERATE_POSITIVE // 0.4 to 0.7
+  WEAK_POSITIVE     // 0.1 to 0.4
+  NONE              // -0.1 to 0.1
+  WEAK_NEGATIVE     // -0.4 to -0.1
+  MODERATE_NEGATIVE // -0.7 to -0.4
+  STRONG_NEGATIVE   // < -0.7
+}
