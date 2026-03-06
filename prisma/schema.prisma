@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id               String              @id @default(uuid())
+  name             String
+  slug             String              @unique
+  status           TenantStatus        @default(ACTIVE)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  releases         Release[]
+  risks            Risk[]
+  users            User[]
+  aiAnalysisResults AiAnalysisResult[]
+
+  @@index([status])
+}
+
+
+model User {
+  id           String   @id @default(uuid())
+  email        String
+  passwordHash String
+  name         String
+  role         UserRole
+  isActive     Boolean  @default(true)
+  tenantId     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([email, tenantId])
+  @@index([tenantId])
+}
+
+model SuperAdmin {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String   @default("Super Admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AiAnalysisResult {
+  id              String   @id @default(uuid())
+  releaseId       String
+  tenantId        String
+  analysisType    String   // 'risk_mitigation', 'pattern_analysis', etc.
+  riskPatterns    Json     // Array of identified patterns
+  recommendations Json     // Array of AI recommendations
+  improvements    Json     // List of improvements made
+  confidenceScore Float    @default(0.5)
+  risksAnalyzed   Int      @default(0)
+  risksUpdated    Int      @default(0)
+  beforeMetrics   Json     // Metrics before AI processing
+  afterMetrics    Json     // Metrics after AI processing
+  processingTime  Int      // Processing time in milliseconds
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([releaseId])
+  @@index([tenantId])
+  @@index([analysisType])
+}
+
+model Lead {
+  id              String     @id @default(uuid())
+  name            String
+  email           String
+  company         String
+  jobTitle        String?
+  phone           String?
+  message         String?
+  status          LeadStatus @default(NEW)
+  source          String     @default("website")
+  assignedTo      String?
+  notes           String?
+  followUpDate    DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
+}
+
+model AiProvider {
+  id          String         @id @default(uuid())
+  name        String
+  type        AiProviderType
+  displayName String
+  isActive    Boolean        @default(false)
+  apiKey      String?
+  baseUrl     String?
+  model       String
+  config      Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([isActive])
+  @@index([type])
+}
+
+model Risk {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  category    RiskCategory
+  severity    RiskSeverity
+  score       Float        @default(0)
+  status      RiskStatus   @default(OPEN)
+  tenantId    String
+  releaseId   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  release     Release?     @relation(fields: [releaseId], references: [id])
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([releaseId])
+  @@index([severity])
+  @@index([tenantId, severity])
+}
+
+model Release {
+  id                  String        @id @default(uuid())
+  version             String
+  description         String?
+  engineeringScore    Float         @default(0)
+  userJourneyScore    Float         @default(0)
+  releaseRiskIndex    Float         @default(0)
+  deploymentDate      DateTime
+  status              ReleaseStatus @default(PENDING)
+  prSize              Int?
+  reviewDurationHours Float?
+  failedBuildRate     Float?
+  testCoverage        Float?
+  deploymentsPerWeek  Int?
+  reopenedIssues      Int?
+  tenantId            String
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  risks               Risk[]
+  aiAnalysisResults   AiAnalysisResult[]
+
+  @@unique([version, tenantId])
+  @@index([tenantId])
+  @@index([deploymentDate])
+  @@index([tenantId, deploymentDate])
+}
+
+model UserJourneyFlow {
+  id             String   @id @default(uuid())
+  name           String
+  dropoffRate    Float    @default(0)
+  incidentCount  Int      @default(0)
+  stabilityScore Float    @default(0)
+  tenantId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model Notification {
+  id          String               @id @default(uuid())
+  title       String
+  description String?
+  type        NotificationType
+  status      NotificationStatus   @default(UNREAD)
+  riskId      String?
+  releaseId   String?
+  userId      String?
+  tenantId    String
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  tenantId  String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([entity, entityId])
+  @@index([tenantId, createdAt])
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum RiskSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskCategory {
+  ENGINEERING
+  USER_JOURNEY
+  RELEASE_PROCESS
+  SECURITY
+  PERFORMANCE
+}
+
+enum RiskStatus {
+  OPEN
+  IN_PROGRESS
+  MITIGATED
+  CLOSED
+}
+
+enum ReleaseStatus {
+  PENDING
+  DEPLOYED
+  ROLLED_BACK
+  CANCELLED
+}
+
+enum AiProviderType {
+  OPENAI
+  GEMINI
+  OLLAMA
+}
+enum NotificationType {
+  RISK_CREATED
+  RISK_UPDATED
+  RISK_SEVERITY_CHANGED
+  RELEASE_CREATED
+  RELEASE_DEPLOYED
+  RELEASE_FAILED
+  HIGH_RISK_ALERT
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  DISMISSED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DEMO_SCHEDULED
+  DEMO_COMPLETED
+  PROPOSAL_SENT
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
