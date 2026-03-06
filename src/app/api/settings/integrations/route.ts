@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [gitIntegration, cicdIntegration] = await Promise.all([
+    const [gitIntegration, cicdIntegration, prCount, buildCount] = await Promise.all([
       prisma.gitIntegration.findUnique({
         where: { tenantId: user.tenantId },
         select: {
@@ -36,11 +36,39 @@ export async function GET() {
           syncError: true,
         },
       }),
+      prisma.pullRequestData.count({
+        where: { tenantId: user.tenantId },
+      }),
+      prisma.buildData.count({
+        where: { tenantId: user.tenantId },
+      }),
     ]);
+
+    // Count code reviews (PRs with review duration > 0)
+    const codeReviewCount = await prisma.pullRequestData.count({
+      where: { 
+        tenantId: user.tenantId,
+        reviewDurationHrs: { gt: 0 },
+      },
+    });
+
+    // Count deployments (successful builds)
+    const deploymentCount = await prisma.buildData.count({
+      where: { 
+        tenantId: user.tenantId,
+        status: 'success',
+      },
+    });
 
     return NextResponse.json({
       git: gitIntegration,
       cicd: cicdIntegration,
+      stats: {
+        pullRequests: prCount,
+        codeReviews: codeReviewCount,
+        builds: buildCount,
+        deployments: deploymentCount,
+      },
     });
   } catch (error) {
     console.error('Error fetching integrations:', error);

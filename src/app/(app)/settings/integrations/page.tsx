@@ -42,6 +42,13 @@ interface CICDIntegration {
   syncError: string | null;
 }
 
+interface SyncStats {
+  pullRequests: number;
+  codeReviews: number;
+  builds: number;
+  deployments: number;
+}
+
 const gitProviderOptions = [
   { value: 'GITHUB', label: 'GitHub' },
   { value: 'GITLAB', label: 'GitLab' },
@@ -58,6 +65,7 @@ const cicdProviderOptions = [
 export default function IntegrationsPage() {
   const [gitIntegration, setGitIntegration] = useState<GitIntegration | null>(null);
   const [cicdIntegration, setCicdIntegration] = useState<CICDIntegration | null>(null);
+  const [syncStats, setSyncStats] = useState<SyncStats>({ pullRequests: 0, codeReviews: 0, builds: 0, deployments: 0 });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
 
@@ -92,6 +100,9 @@ export default function IntegrationsPage() {
       const data = await res.json();
       setGitIntegration(data.git);
       setCicdIntegration(data.cicd);
+      if (data.stats) {
+        setSyncStats(data.stats);
+      }
     } catch (err) {
       console.error('Failed to fetch integrations', err);
     } finally {
@@ -367,19 +378,19 @@ export default function IntegrationsPage() {
             <h3 className="text-sm font-semibold text-white mb-4">Synced Data Overview</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                <p className="text-2xl font-bold text-white">--</p>
+                <p className="text-2xl font-bold text-white">{syncStats.pullRequests}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Pull Requests</p>
               </div>
               <div className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                <p className="text-2xl font-bold text-white">--</p>
+                <p className="text-2xl font-bold text-white">{syncStats.codeReviews}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Code Reviews</p>
               </div>
               <div className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                <p className="text-2xl font-bold text-white">--</p>
+                <p className="text-2xl font-bold text-white">{syncStats.builds}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Builds</p>
               </div>
               <div className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                <p className="text-2xl font-bold text-white">--</p>
+                <p className="text-2xl font-bold text-white">{syncStats.deployments}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Deployments</p>
               </div>
             </div>
