@@ -20,6 +20,12 @@ async function getRisks(tenantId: string, filters: Record<string, string>, page:
   if (filters.category) where.category = filters.category;
   if (filters.status)   where.status   = filters.status;
   if (filters.releaseId) where.releaseId = filters.releaseId;
+  if (filters.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: 'insensitive' } },
+      { description: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
 
   const skip = (page - 1) * PAGE_SIZE;
   
@@ -75,6 +81,12 @@ export default async function RisksPage({
   if (params.category) statsWhere.category = params.category;
   if (params.status)   statsWhere.status   = params.status;
   if (params.releaseId) statsWhere.releaseId = params.releaseId;
+  if (params.search) {
+    statsWhere.OR = [
+      { title: { contains: params.search, mode: 'insensitive' } },
+      { description: { contains: params.search, mode: 'insensitive' } },
+    ];
+  }
 
   const [criticalCount, highCount, openCount] = await Promise.all([
     prisma.risk.count({ where: { ...statsWhere, severity: 'CRITICAL' } }),
@@ -104,7 +116,7 @@ export default async function RisksPage({
 
         {/* Filter + Actions */}
         <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <RiskFilterBar currentFilters={params} />
+          <RiskFilterBar currentFilters={params} releases={releases} />
           {user.role !== 'VIEWER' && <AddRiskButton tenantId={user.tenantId} />}
         </div>
 

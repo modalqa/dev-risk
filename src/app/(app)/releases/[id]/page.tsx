@@ -15,6 +15,7 @@ import {
   Sparkles, Clock,
 } from 'lucide-react';
 import RiskIndexGauge from '@/components/dashboard/RiskIndexGauge';
+import SuggestRiskButton from '@/components/SuggestRiskButton';
 import Link from 'next/link';
 
 async function getRelease(id: string, tenantId: string) {
@@ -263,16 +264,30 @@ export default async function ReleaseDetailPage({ params }: { params: { id: stri
               <p className="text-xs text-gray-500 mt-0.5">{release.risks.length} risks identified</p>
             </div>
             {user.role !== 'VIEWER' && (
-              <Link
-                href={`/risks?releaseId=${release.id}`}
-                className="text-xs text-primary-light hover:text-primary transition-colors"
-              >
-                + Add risk
-              </Link>
+              <div className="flex items-center gap-2">
+                <SuggestRiskButton
+                  releaseId={release.id}
+                  hasDescription={!!release.description && release.description.trim().length > 0}
+                />
+                <Link
+                  href={`/risks?releaseId=${release.id}`}
+                  className="text-xs text-primary-light hover:text-primary transition-colors"
+                >
+                  + Add risk
+                </Link>
+              </div>
             )}
           </div>
           {release.risks.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-6">No risk items yet</p>
+            <div className="flex flex-col items-center py-6 gap-3">
+              <p className="text-sm text-gray-500">No risk items yet</p>
+              {user.role !== 'VIEWER' && release.description && release.description.trim().length > 0 && (
+                <SuggestRiskButton
+                  releaseId={release.id}
+                  hasDescription={true}
+                />
+              )}
+            </div>
           ) : (
             <div className="space-y-2">
               {release.risks.map((risk: any) => (
